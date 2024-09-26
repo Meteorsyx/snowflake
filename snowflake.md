@@ -294,4 +294,185 @@ snowflake的数据存储费用是基于压缩数据的每日平均大小而计�
 
    云服务层和集中式（混合列式）数据库存储层是多租户的。查询处理（虚拟仓库）计算层不是多租户的。请注意，Snowflake 是一种多租户服务，云对象存储也是一种多租户服务。因此，数据在公共云级别并没有真正隔离。加密创造了隔离。在公共云级别，Snowflake 的混合租户策略使用多租户表来整合存储，但为每个租户分配专用的计算资源。
 
-![image-20240925170542769](C:\Users\研修用\AppData\Roaming\Typora\typora-user-images\image-20240925170542769.png)
+3. The virtual warehouse cache is located in the compute layer. The result cache is located in the cloud services layer. The metadata storage cache layer is located in the cloud services layer.
+
+   虚拟仓库缓存位于计算层，结果缓存位于云服务层，元数据存储缓存层位于云服务层。
+
+4. You might want to investigate the following if you are experiencing higher than
+
+   expected costs for Snowflake cloud services:
+
+   • Simple queries accessing session information or using session variables
+
+   • Large, complex queries with many joins
+
+   • Single-row inserts, as compared to bulk or batch loading
+
+   • Frequent use of INFORMATION_SCHEMA commands
+
+   • Frequent use of metadata-only commands such as the SHOW command
+
+   如果您遇到 Snowflake 云服务成本高于预期的情况，您可能需要调查以下问题：
+   • 访问会话信息或使用会话变量的简单查询
+
+   - **Simple queries accessing session information or using session variables:** While seemingly innocuous, repeatedly executing these queries can consume unnecessary compute resources, especially if they're part of a larger application or process that runs frequently. The overhead of establishing a session and retrieving this information adds up over time.
+     **访问会话信息或使用会话变量的简单查询：**虽然看似无害，但重复执行这些查询可能会消耗不必要的计算资源，尤其是当它们是频繁运行的大型应用程序或进程的一部分时。建立会话和检索此信息的开销会随着时间的推移而增加。
+
+   • 具有许多连接的大型复杂查询
+
+   - **Large, complex queries with many joins:** These queries are computationally expensive. The more joins involved, the more data Snowflake needs to process, leading to longer query execution times and higher compute costs. Inefficient query optimization can exacerbate this issue.
+     **具有许多联接的大型复杂查询：**这些查询的计算成本很高。涉及的联接越多，Snowflake 需要处理的数据就越多，从而导致查询执行时间更长，计算成本更高。低效的查询优化可能会加剧此问题。
+
+   • 与批量或批量加载相比，单行插入
+
+   - **Single-row inserts compared to batch or bulk loading:** Inserting data row by row is significantly less efficient than using batch or bulk loading methods. Each single-row insert requires a separate transaction, incurring more overhead than a single, larger operation.
+     **单行刀片与批量或批量加载的比较：**逐行插入数据的效率明显低于使用批处理或批量加载方法。每个单行插入都需要一个单独的事务，这比单个较大的操作产生更多的开销。
+
+   • 频繁使用 INFORMATION_SCHEMA 命令
+
+   - **Frequent use of INFORMATION_SCHEMA commands:** While `INFORMATION_SCHEMA` provides valuable metadata, excessive querying can consume compute resources. If this information is needed repeatedly, caching the results or optimizing the querying strategy can significantly reduce costs.
+     **频繁使用 INFORMATION_SCHEMA 命令：**虽然 `INFORMATION_SCHEMA` 提供了有价值的元数据，但过多的查询会消耗计算资源。如果重复需要此信息，则缓存结果或优化查询策略可以显著降低成本。
+
+   • 频繁使用仅元数据命令（例如 SHOW 命令）
+
+   - **Frequent use of metadata-only commands (e.g., SHOW commands):** Similar to `INFORMATION_SCHEMA` queries, frequent use of `SHOW` commands, while useful for administrative tasks, can add up to significant compute costs if not managed carefully. These commands, while not processing large datasets, still require resources to execute.
+     **频繁使用仅元数据命令（例如 SHOW 命令）：**与 `INFORMATION_SCHEMA` 查询类似，频繁使用 `SHOW` 命令虽然对管理任务很有用，但如果不仔细管理，可能会增加大量的计算成本。这些命令虽然不处理大型数据集，但仍需要资源来执行。
+
+5. Scaling up is a manual resizing of a virtual warehouse to a larger or smaller size and is most often undertaken to improve query performance and handle large workloads. Scaling out is an automatic process of increasing and decreasing the number of compute clusters and is more often used to maximize concurrency. Scaling out is achieved using multicluster virtual warehouses, which can automatically scale if the number of users and/or queries tends to fluctuate.
+
+   纵向扩展是手动将虚拟仓库调整为更大或更小的规模，通常用于提高查询性能和处理大量工作负载。横向扩展是自动增加和减少计算集群数量的过程，通常用于最大化并发性。扩展是使用多集群虚拟仓库实现的，如果用户和/或查询数量出现波动，它可以自动扩展。
+
+6. Compute can be scaled up, down, in, or out. In all cases, there is no effect on storage used.
+
+   计算可以扩展、缩小或扩大。在所有情况下，对使用的存储都没有影响。
+
+7. The scalability problem is the main challenge that has been difficult for architectures to solve. Platform architectures need to be scalable to support sharing of the same data at the same time with data-driven teams, large and small, near or far from the data.
+
+   可扩展性问题是架构一直难以解决的主要挑战。平台架构需要可扩展，以支持与数据驱动团队（无论规模大小、距离数据近还是远）同时共享相同的数据。
+
+8. When Auto-scale mode is selected, the choice of scaling policy is either Standard or Economy:
+   • With the Standard scaling policy, the first virtual warehouse immediately starts when a query is queued, or the Snowflake system detects that there is more than one query than the currently running clusters can execute.
+   • With the Economy scaling policy, a virtual warehouse starts only if the Snowflake system estimates the query load can keep the virtual warehouse busy for at least six minutes. The goal of the Economy scaling policy is to conserve credits by keeping virtual warehouses fully loaded.
+
+   选择自动扩展模式时，扩展策略的选择为标准或经济：
+   • 使用标准扩展策略，当查询排队时，第一个虚拟仓库会立即启动，或者 Snowflake 系统检测到当前正在运行的集群无法执行的查询不止一个。
+   • 使用经济扩展策略，只有当 Snowflake 系统估计查询负载可以让虚拟仓库忙碌至少六分钟时，虚拟仓库才会启动。经济扩展策略的目标是通过保持虚拟仓库满载来节省信用。
+
+9. You need to configure the following components for multicluster virtual warehouses:
+   • Mode
+   — Auto-scale; can be set to Standard or Economy
+   — Maximized; maximized when the Min Clusters value is greater than 1 and both the Min Clusters and Max Clusters values are equal
+   • Min Clusters
+   • Max Clusters
+
+   您需要为多集群虚拟仓库配置以下组件：
+   • 模式
+   — 自动扩展；可设置为标准或经济
+   — 最大化；当最小集群值大于 1 且最小集群值和最大集群值相等时最大化
+   • 最小集群
+   • 最大集群
+
+10. You can change the virtual warehouse via the drop-down menu. You can use the USE WAREHOUSE SQL command in the worksheet.
+
+   您可以通过下拉菜单更改虚拟仓库。您可以在工作表中使用 USE WAREHOUSE SQL 命令。
+
+
+
+
+
+# Creating and Managing Snowflake Securable Database Objects
+
+## Creating and Managing Snowflake Databases
+
+the database and schema comprise the namespace.whenever we work with database objects we'll need to specify a namespace,unless he schema and database we want to use are the active context in workspace.
+
+数据库和模式组成了命名空间。每当我们使用数据库对象时，我们都需要指定一个命名空间，除非我们要使用的模式和数据库是工作区中的活动上下文。
+
+We can create two main types of databases: permanent (persistent) and transient. At the time we create a database, the default will be a permanent database, if we don’t specify which of the two types we want to create.
+
+我们可以创建两种主要类型的数据库：永久（持久）和瞬态。在创建数据库时，如果我们不指定要创建这两种类型中的哪一种，则默认为永久数据库。
+
+
+
+CREATE DATABASE is the command used to create a new database, clone an existing database, create a database from a share provided by another Snowflake account, or create a replica of an existing primary database (i.e., a secondary database).
+
+CREATE DATABASE 是用于创建新数据库、克隆现有数据库、从另一个 Snowflake 帐户提供的共享创建数据库或创建现有主数据库的副本（即辅助数据库）的命令。
+
+
+
+创建一个临时数据库
+
+```SQL
+USE ROLE SYSADMIN;
+USE WAREHOUSE COMPUTE_WH;
+CREATE OR REPLACE TRANSIENT DATABASE DEMO3B_DB
+COMMENT = 'Transient Database for Chapter 3 Exercises';
+```
+
+
+
+retention_time是数据保留时间，与time travel 天数相同，并指定删除后保留基础数据的天数，并且可以对数据库执行CLONE and UNDROP命令。临时数据库无法修改保留时间。
+
+![image-20240926140531604](C:\Users\研修用\AppData\Roaming\Typora\typora-user-images\image-20240926140531604.png)
+
+
+
+修改数据保留时间
+
+```SQL
+USE ROLE SYSADMIN;
+ALTER DATABASE DEMO3A_DB
+SET DATA_RETENTION_TIME_IN_DAYS = 10;
+```
+
+
+
+## Creating and Managing Snowflake Schemas
+
+创建schemas
+
+```sql
+USE ROLE SYSADMIN;
+USE DATABASE DEMO3A_DB;
+CREATE OR REPLACE SCHEMA BANKING;
+```
+
+
+
+```sql
+//更改模式的保留时间
+USE ROLE SYSADMIN;
+ALTER SCHEMA DEMO3A_DB.BANKING
+SET DATA_RETENTION_TIME_IN_DAYS=1;
+```
+
+
+
+```sql
+//更改表存在的schemas
+use role sysadmin;
+create or replace schema demo3b_db.banking;
+alter table demo3b_db.public.summary
+rename to demo3b_db.banking.summary;
+```
+
+ In a managed access schema, the schema owner manages grants on the objects within a schema, such as tables and views, but doesn’t have any of the USAGE, SELECT, or DROP privileges on the objects.
+
+在托管访问模式中，模式所有者管理模式内对象（例如表和视图）的授权，但不拥有这些对象的任何 USAGE、SELECT 或 DROP 权限。
+
+
+
+托管访问模式下，只有schema owner 和 manage grants 可以管理授权权限。
+
+
+
+## INFORMATION_SCHEMA
+
+INFORMATION_SCHEMA包括有关数据库中对象的元数据信息以及账户级对象（如角色）。
+
+每个INFORMATION_SCHEMA都包含20多个系统定义的试图。这些视图可以分为两类: 账户视图和数据库视图。
+
+
+
+## ACCOUNT_USAGE  Schema
+
