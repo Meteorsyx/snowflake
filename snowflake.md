@@ -94,3 +94,204 @@ The keys to using warehouses effectively and efficiently are:
 
 我们将详细介绍Snowflake架构的三个不同层级：云服务层、查询处理（虚拟仓库）计算层和集中式（混合列式）数据库存储层。
 
+
+
+### 共享磁盘（可扩展）架构
+
+共享磁盘架构是一种早期的扩展方法，旨在将数据存储在中央存储位置，并从多个数据库集群节点访问。所有集群节点访问的数据是一致的，所有数据写入共享磁盘。但需要复杂的磁盘锁定机制来确保数据一致性，同时，数据并发性，允许多个用户在数据库中影响多个事务，也是一个主要问题。
+
+
+
+![image.png](https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/1633e82996fd4890b63334ab57e55bfc~tplv-k3u1fbpfcp-zoom-in-crop-mark:1512:0:0:0.awebp?)
+
+
+
+### 共享无关（可扩展）架构
+
+共享无关架构是为了应对共享磁盘架构所造成的瓶颈而设计的，其中存储和计算是一起扩展的。
+
+数据在节点之间的分布方式将决定额外开销的程度。在存储和计算之间取得合适的平衡尤为困难。即使可以调整集群的大小，也需要时间进行调整。因此，组织往往会过度配置共享无关资源，导致未使用和不必要的资源。共享无关架构的示例包括IBM DB2、Vertica和Pivotal Greenplum。
+
+
+
+![image.png](https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/d2fd7f0e8403497da3f9dc924b4c4505~tplv-k3u1fbpfcp-zoom-in-crop-mark:1512:0:0:0.awebp?)
+
+
+
+
+
+### NoSQL架构
+
+大多数NoSQL解决方案依赖于共享无关架构，因此它们具有许多相同的限制。NoSQL解决方案的好处是可以存储非关系型数据，而无需先对数据进行转换。
+
+有四种类型的NoSQL数据库：文档存储（document stores）、键值（key-value）存储、列族数据存储或宽列数据存储，以及图形数据库。
+
+nosql存储在大量记录的计算中(如聚合，窗口函数和任意序列)性能表现较差。在表中增删改查单个条目时，nosql表现较好，但不建议进行分析，分析方面表现不佳。
+
+
+
+### Snowflake架构
+
+传统架构中可扩展性问题难以解决。Snowflake团队决定采取一种独特的方法。他们不是试图逐步改进或转变现有的软件架构，而是为云环境构建了一个全新的现代数据平台，允许多个用户同时共享实时数据。
+
+
+
+Snowflake混合模型架构由三个层级组成，如图2-3所示：云服务层、计算层和数据存储层。每个层级以及三个Snowflake缓存将在以下章节中详细讨论。
+
+![image.png](https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/f08bba5d6f0249a2a9358c5adafa9849~tplv-k3u1fbpfcp-zoom-in-crop-mark:1512:0:0:0.awebp?)
+
+Snowflake的处理引擎是原生的SQL，并且正如我们将在后面的章节中看到的那样，Snowflake还能够处理半结构化和非结构化数据。
+
+
+
+#### 云服务层
+
+在Snowflake实例中，所有与数据的交互都始于云服务层，也称为全局服务层（如图2-4所示）。
+
+![image.png](https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/3373fcb99a4d4062b1eed8f01b308fa4~tplv-k3u1fbpfcp-zoom-in-crop-mark:1512:0:0:0.awebp?)
+
+它能协调身份验证、访问控制和加密等活动。它还处理基础设施和元数据的管理功能，以及执行查询解析和优化等功能。
+
+每当用户请求登录时，该请求都会由云服务层处理。当用户提交一个Snowflake查询时，该SQL查询将首先发送到云服务层的优化器，然后再发送到计算层进行处理。云服务层使得可以通过SQL客户端界面执行对数据的数据定义语言（DDL）和数据操作语言（DML）操作。
+
+即使特定用例的云服务成本较高，从经济和/或战略上来看，有时承担这些成本也是有意义的。例如，利用查询的结果缓存，特别是对于大型或复杂的查询，将意味着该查询的计算成本为零。对于DDL命令，特别是在克隆等用例中，选择合适的频率和粒度可以更好地平衡云服务消耗成本和虚拟仓库成本，从而实现整体成本的降低。
+
+
+
+#### 查询处理（虚拟仓库）计算层
+
+Snowflake的计算集群，通常简称为虚拟仓库，是由CPU、内存和临时存储组成的动态计算资源集群。
+
+大多数sql查询和所有DML操作都需要一个正在运行的虚拟仓库。一些sql查询可以在不需要虚拟仓库的情况下执行，这和查询结构缓存有关。
+
+
+
+Snowflake的独特架构实现了存储和计算的分离，这意味着任何虚拟仓库都可以访问与其他仓库相同的数据，而不会产生争用或影响其他仓库的性能。这是因为每个Snowflake虚拟仓库都是独立运行的，不与其他虚拟仓库共享计算资源（如图2-5所示）。
+
+![image.png](https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/1791d9afc47549fba0dce14408ea251e~tplv-k3u1fbpfcp-zoom-in-crop-mark:1512:0:0:0.awebp?)
+
+
+
+一个虚拟仓库在运行时始终会消耗计算资源。然而，Snowflake的虚拟仓库可以随时启动和停止，并且可以在运行时调整大小。Snowflake支持两种不同的仓库扩展方式。通过调整仓库的大小可以将虚拟仓库的规模扩大（scale up），而通过添加集群可以将虚拟仓库的规模扩展（scale out）。可以同时使用这两种扩展方法，也可以只使用其中一种。
+
+**区别总结：**
+
+| 特征     | 添加集群 (Scale Out)   | 扩大仓库规模 (Scale Up)      |
+| -------- | ---------------------- | ---------------------------- |
+| 扩展方式 | 横向扩展，增加集群数量 | 纵向扩展，增加单个仓库的资源 |
+| 主要作用 | 提升并发处理能力       | 提升单个查询的执行速度       |
+| 类比     | 多个工厂               | 更强大的工厂                 |
+| 适用场景 | 高并发场景             | 复杂、数据量大的查询         |
+
+**选择建议：**
+
+- 如果面临高并发场景，需要同时处理大量用户的查询请求，建议添加集群。
+- 如果需要处理复杂、数据量大的查询，需要提升单个查询的执行速度，建议扩大仓库规模。
+
+总而言之，添加集群和扩大仓库规模是两种不同的扩展方式，需要根据实际需求选择合适的方案。
+
+##### 将虚拟仓库的规模扩大以处理大数据量和复杂查询
+
+许多因素会影响虚拟仓库的性能。并发查询的数量、正在查询的表的数量以及数据的大小和组成等因素都应在调整Snowflake虚拟仓库大小时加以考虑。
+
+适当调整大小很重要。如果虚拟仓库太小，导致资源不足，可能会导致查询花费太长时间。如果查询过小且虚拟仓库过大，可能会对成本产生负面影响。
+
+##### 通过使用多集群虚拟仓库进行横向扩展，以最大化并发性
+
+如果并发性问题是由于用户或连接数过多而导致的，扩容将无法充分解决问题。相反，我们需要通过添加集群来进行横向扩展（如图2-9所示），例如从最小集群数为1扩展到最大集群数为3。多集群虚拟仓库可以设置为在用户数量和/或查询数量波动时自动进行扩缩容。
+
+![image.png](https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/69539e628f9645ecaedb9b50cfb40973~tplv-k3u1fbpfcp-zoom-in-crop-mark:1512:0:0:0.awebp?)
+
+当多集群虚拟仓库配置为采用标准扩缩容策略时，第一个虚拟仓库将在查询排队时立即启动，或者当Snowflake系统检测到比当前运行的集群能够执行的查询多一个时启动。每个后续虚拟仓库将在前一个虚拟仓库启动后的20秒启动。 如果多集群虚拟仓库配置为采用经济扩缩容策略，只有当Snowflake系统估计查询负载可以至少使虚拟仓库保持繁忙六分钟时，虚拟仓库才会启动。
+
+##### 创建和使用虚拟仓库
+
+使用SQL命令在Web界面或工作表中执行虚拟仓库操作。
+
+以下SQL脚本将创建一个具有四个集群的中型虚拟仓库，并在五分钟后自动暂停。
+
+```sql
+USE ROLE SYSADMIN; 
+CREATE WAREHOUSE CH2_WH WITH WAREHOUSE_SIZE = MEDIUM    
+AUTO_SUSPEND = 300 
+AUTO_RESUME = true 
+INITIALLY_SUSPENDED = true;
+```
+
+之前我们讨论了如何通过扩容或缩容来改变虚拟仓库的大小，以及这是一个手动的过程。为了进行扩容或缩容，我们将使用ALTER命令：
+
+```sql
+USE ROLE SYSADMIN;
+ALTER WAREHOUSE CH2_WH
+SET WAREHOUSE_SIZE = LARGE;
+```
+
+
+
+##### 工作负载的分离和工作负载管理
+
+在传统数据库中，工作负载达到最大容量时，查询处理会变慢。
+
+snowflake在工作负载接近100%时，每个新的查询会被暂停在队列中，直到有足够的资源来执行它们。
+
+有多种方法可以有效处理不同规模的工作负载。其中一种方法是通过将不同的虚拟仓库分配给不同的用户或用户组来分离工作负载（如图2-15所示）。图2-15中显示的虚拟仓库都是相同大小的，但在实际中，不同工作负载的虚拟仓库很可能是不同大小的。
+
+![image.png](https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/f02364dc22b7484392e58a1740b3dc59~tplv-k3u1fbpfcp-zoom-in-crop-mark:1512:0:0:0.awebp?)
+
+#### 集中化（混合列式）数据库存储层
+
+Snowflake的集中化数据库存储层保存着所有的数据，包括结构化数据和半结构化数据。
+
+每个Snowflake数据库由一个或多个模式（Schema）组成，模式是数据库对象（如表格和视图）的逻辑分组。
+
+Snowflake的数据存储层有时被称为远程磁盘层。底层文件系统是在亚马逊、微软或谷歌云上实现的（如图2-17所示）。
+
+![image.png](https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/f64f5f21190e462fa877fd37be7cca47~tplv-k3u1fbpfcp-zoom-in-crop-mark:1512:0:0:0.awebp?)
+
+
+
+##### 零拷贝克隆简介
+
+零拷贝克隆提供给用户一种快照拷贝Snowflake数据库、模式或表以及其相关数据的方式。在进行零拷贝数据克隆时，不会额外收取存储费用，因为它只是一个元数据操作。零拷贝克隆除了用于创建备份外，还有许多其他用途。最常见的用途是用于支持开发和测试环境。我们将在第8章中看到相关示例。
+
+
+
+##### 时间旅行简介
+
+时间旅行(Time Travel)允许您恢复数据库、表或模式的以前版本。
+
+通过时间旅行，您还可以通过将时间旅行功能与克隆功能结合使用，从过去的不同时间点备份数据，或者可以查询不再存在的数据库对象。您可以回溯到过去多久取决于几个不同的因素。时间旅行将在第7章中详细讨论。
+
+
+
+##### 存储层的计费
+
+snowflake的数据存储费用是基于压缩数据的每日平均大小而计算的。包括：永久表中持久数据的存储费用，批量数据加载和卸载文件的费用。故障安全数据和使用时间旅行进行数据恢复的费用。同样，被删除数据引用的表的克隆也会被考虑在内。
+
+
+
+#### Snowflake缓存
+
+当您提交一个查询时，Snowflake会检查该查询是否之前已经运行过，并且结果是否仍然存在缓存中。如果结果仍然可用，Snowflake将使用缓存的结果集而不是执行您刚刚提交的查询。除了从缓存中检索先前的查询结果外，Snowflake还支持其他缓存技术。Snowflake有三种缓存类型：查询结果缓存、虚拟数据仓库缓存和元数据缓存。
+
+
+
+### 知识检查
+
+![image-20240925170638350](C:\Users\研修用\AppData\Roaming\Typora\typora-user-images\image-20240925170638350.png)
+
+
+
+![image-20240925170657047](C:\Users\研修用\AppData\Roaming\Typora\typora-user-images\image-20240925170657047.png)
+
+1. The three Snowflake architecture layers are the cloud services layer, the query processing (virtual warehouse) compute layer, and the centralized (hybridcolumnar) database storage layer
+
+   Snowflake 架构的三个层分别是云服务层、查询处理（虚拟仓库）计算层和集中式（混合列式）数据库存储层
+
+
+
+2. The cloud services layer and the centralized (hybrid columnar) database storage layer are multitenant. The query processing (virtual warehouse) compute layer is not multitenant. Note that Snowflake is a multitenant service and the cloud object store is a multitenant service. As such, data is not truly isolated at the public cloud level. It is encryption that creates the isolation. Snowflake’s hybrid　tenancy policy, at the public cloud level, uses a multitenant table to consolidate storage but allocates dedicated compute resources to each tenant.
+
+   云服务层和集中式（混合列式）数据库存储层是多租户的。查询处理（虚拟仓库）计算层不是多租户的。请注意，Snowflake 是一种多租户服务，云对象存储也是一种多租户服务。因此，数据在公共云级别并没有真正隔离。加密创造了隔离。在公共云级别，Snowflake 的混合租户策略使用多租户表来整合存储，但为每个租户分配专用的计算资源。
+
+![image-20240925170542769](C:\Users\研修用\AppData\Roaming\Typora\typora-user-images\image-20240925170542769.png)
