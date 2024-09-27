@@ -476,3 +476,121 @@ INFORMATION_SCHEMA包括有关数据库中对象的元数据信息以及账户�
 
 ## ACCOUNT_USAGE  Schema
 
+ACCOUNT_USAGE schema is very similar to the INFORMATION_SCHEMA, but with three differences:
+• The SNOWFLAKE database ACCOUNT_USAGE schema includes records for dropped objects whereas the INFORMATION_SCHEMA does not.
+• The ACCOUNT_USAGE schema has a longer retention time for historical usage data. Whereas the INFORMATION_SCHEMA has data available ranging from seven days to six months, the ACCOUNT_USAGE view retains historical data for one year.
+• Most views in the INFORMATION_SCHEMA have no latency, but
+the latency time for ACCOUNT_USAGE could range from 45 minutes
+to three hours. Specifically, for the INFORMATION_SCHEMA, there
+may be a one- to two-hour delay in updating storage-related statistics
+for ACTIVE_BYTES, TIME_TRAVEL_BYTES, FAILSAFE_BYTES, and
+RETAINED_FOR_CLONE_BYTES.
+
+ACCOUNT_USAGE 架构与 INFORMATION_SCHEMA 非常相似，但有三个不同之处：
+• SNOWFLAKE 数据库 ACCOUNT_USAGE 架构包含已删除对象的记录，而 INFORMATION_SCHEMA 则不包含。
+• ACCOUNT_USAGE 架构对历史使用数据的保留时间更长。INFORMATION_SCHEMA 的数据可用时间为 7 天到 6 个月，而 ACCOUNT_USAGE 视图保留历史数据为一年。
+• INFORMATION_SCHEMA 中的大多数视图没有延迟，但 ACCOUNT_USAGE 的延迟时间可能为 45 分钟到 3 小时。具体而言，对于 INFORMATION_SCHEMA，更新 ACTIVE_BYTES、TIME_TRAVEL_BYTES、FAILSAFE_BYTES 和 RETAINED_FOR_CLONE_BYTES 的存储相关统计信息可能会有一到两个小时的延迟。
+
+
+
+ACCOUNT_USAGE Schema 的常见用途之一是跟踪您的账户中每个虚拟仓库在一段时间内（月初至今）使用的积分
+
+```sql
+USE ROLE ACCOUNTADMIN;
+USE DATABASE SNOWFLAKE;
+USE SCHEMA ACCOUNT_USAGE;
+USE WAREHOUSE COMPUTE_WH;
+SELECT start_time::date AS USAGE_DATE, WAREHOUSE_NAME,
+    SUM(credits_used) AS TOTAL_CREDITS_CONSUMED
+FROM warehouse_metering_history
+WHERE start_time >=date_trunc(Month,current_date)
+GROUP BY 1,2
+ORDER BY 2,1;
+```
+
+
+
+## Schema Object Hierarchy 模式对象层次结构
+
+## Snowflake简介
+
+临时表不能转换为永久表，反之亦然。如果需要转换，需要建立一个新表，再将数据复制进去。
+
+## Creating and Managing Views
+
+
+
+| 特性       | 非具体化视图                           | 具体化视图                               |
+| ---------- | -------------------------------------- | ---------------------------------------- |
+| 数据存储   | 不存储数据                             | 存储查询结果的快照                       |
+| 数据更新   | 实时更新                               | 需要定期刷新                             |
+| 性能       | 对于简单查询性能较好，复杂查询性能较差 | 对于复杂查询性能较好，但需要考虑刷新成本 |
+| 空间占用   | 占用空间小                             | 占用空间大                               |
+| 数据一致性 | 数据一致性高                           | 数据一致性取决于刷新频率                 |
+
+
+
+## Introduction to Snowflake Stages: File Format Included
+
+使用stage存储文件，可以将文件数据库通过分隔符快速将数据导入表中。
+
+
+
+![image-20240927151056214](C:\Users\研修用\AppData\Roaming\Typora\typora-user-images\image-20240927151056214.png)
+
+
+
+## **Extending SQL with Stored Procedures and UDFs**
+
+**两者区别总结:**
+
+| 特性      | 存储过程                                      | 用户自定义函数 (UDF)                          |
+| --------- | --------------------------------------------- | --------------------------------------------- |
+| 返回值    | 可以返回多个值（通过输出参数）                | 只能返回单个值                                |
+| SQL语句数 | 可以包含多个SQL语句                           | 通常只包含一个SQL语句或简单的逻辑块           |
+| 数据修改  | 可以执行数据修改操作 (INSERT, UPDATE, DELETE) | 不能执行数据修改操作 (INSERT, UPDATE, DELETE) |
+| 主要用途  | 复杂的数据库操作，业务逻辑实现                | 简洁的计算或逻辑操作，数据转换                |
+| 调用方式  | `EXEC` 或 `CALL` 语句                         | 直接在SQL语句中调用，像内置函数一样使用       |
+
+通过安全的UDF，使用者账户与其他用户共享此安全UDF时，可以无需看到任何底层数据，表结构或sql代码。
+
+
+
+## Introduction to Pipes,Streams,and Sequences                          管道，流和序列介绍
+
+**1. Pipes (管道):**
+
+Pipes是Snowflake用于高效加载数据的机制。它允许你从外部存储（例如，云存储桶中的文件）自动、持续地将数据加载到Snowflake表中。 你可以配置Pipes来监控指定的存储位置，并在新文件出现时自动将它们加载到Snowflake中。这对于处理大量数据，特别是实时数据流非常有用。 Pipes通常与Snowpipe一起使用，Snowpipe是一个用于管理和监控数据加载到管道中的服务。[6](https://docs.snowflake.com/en/sql-reference/sql/create-pipe) [1](https://docs.snowflake.com/en/user-guide/data-load-snowpipe-intro)
+
+**关键特性:**
+
+- **自动加载:** 无需手动启动加载过程。
+- **持续加载:** 持续监控数据源，并自动加载新数据。
+- **高吞吐量:** 能够高效处理大量数据。
+- **可扩展性:** 可以根据需要调整管道配置以处理不同的数据量。
+
+**2. Streams (流):**
+
+Streams是Snowflake用于捕获表中数据更改的机制。当表中的数据发生插入、更新或删除操作时，Streams会记录这些更改，并将其作为有序的更改记录序列存储起来。 你可以使用Streams来构建实时数据处理管道，例如，构建变更数据捕获（CDC）系统或实时数据分析应用。[4](https://risingwave.com/blog/snowflake-triggers-how-to-use-streams-tasks-examples/) [2](https://docs.snowflake.com/en/user-guide/streams-intro)
+
+**关键特性:**
+
+- **变更数据捕获:** 跟踪表中数据的更改。
+- **实时处理:** 提供对实时数据更改的访问。
+- **有序记录:** 按时间顺序记录更改。
+- **事务一致性:** 确保更改记录的一致性。
+
+**3. Sequences (序列):**
+
+Sequences是Snowflake用于生成唯一数字序列的对象。 它们通常用于为表中的行生成唯一的标识符，例如主键。 Sequences可以自动生成数字，并确保生成的数字是唯一的，这对于避免主键冲突非常重要。[5](https://medium.com/@trustngs/snowflake-snowpro-core-preparation-part-5-file-formats-sequences-streams-tasks-df0c8a42fcb9)
+
+**关键特性:**
+
+- **唯一性:** 确保生成的数字是唯一的。
+- **自动递增:** 自动生成下一个数字。
+- **可定制:** 可以自定义序列的起始值、步长等参数。
+- **并发安全:** 在并发环境下也能保证唯一性。
+
+**总结:**
+
+Pipes用于数据加载，Streams用于捕获数据更改，Sequences用于生成唯一数字。它们是Snowflake提供的不同数据管理工具，可以根据你的需求选择合适的工具来处理数据。 它们之间并没有直接的依赖关系，可以独立使用，也可以组合使用以构建更复杂的数据处理流程。 例如，你可以使用Pipes加载数据，然后使用Streams来监控这些数据的更改。
