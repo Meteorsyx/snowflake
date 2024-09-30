@@ -242,6 +242,13 @@ snowflake在工作负载接近100%时，每个新的查询会被暂停在队列�
 
 Snowflake的集中化数据库存储层保存着所有的数据，包括结构化数据和半结构化数据。
 
+- Structured — CSV, Integers, Strings, Arrays etc.
+  结构化 — CSV、整数、字符串、数组等。
+- Semi Structured — JSON, Avro, Parquet, ORC, XML
+  半结构化 — JSON、Avro、Parquet、ORC、XML
+- Unstructured — Documents, Images, Audio, Video
+  非结构化 — 文档、图像、音频、视频
+
 每个Snowflake数据库由一个或多个模式（Schema）组成，模式是数据库对象（如表格和视图）的逻辑分组。
 
 Snowflake的数据存储层有时被称为远程磁盘层。底层文件系统是在亚马逊、微软或谷歌云上实现的（如图2-17所示）。
@@ -594,3 +601,21 @@ Sequences是Snowflake用于生成唯一数字序列的对象。 它们通常用�
 **总结:**
 
 Pipes用于数据加载，Streams用于捕获数据更改，Sequences用于生成唯一数字。它们是Snowflake提供的不同数据管理工具，可以根据你的需求选择合适的工具来处理数据。 它们之间并没有直接的依赖关系，可以独立使用，也可以组合使用以构建更复杂的数据处理流程。 例如，你可以使用Pipes加载数据，然后使用Streams来监控这些数据的更改。
+
+
+
+# Snowflake Editions, Key Tools and User Interfaces
+
+## Snowflake Editions: 雪花版本：
+
+● **Standard** — Introductory level offering, providing full, unlimited access to all of Snowflake’s standard features. It provides a strong balance between features, level of support, and cost.
+●**标准**— 入门级产品，提供对Snowflake 所有标准功能的完整、无限制的访问。它在功能、支持级别和成本之间提供了强有力的平衡。
+
+● **Enterprise** — Provides all the features and services of Standard Edition, with additional features designed specifically for the needs of large-scale enterprises and organizations.
+●**企业版**— 提供标准版的所有功能和服务，以及专为大型企业和组织的需求而设计的附加功能。
+
+● **Business Critical —** Provides all the features and services of Enterprise Edition, with the addition of enhanced security and data protection. In addition, database failover/failback adds support for business continuity and disaster recovery. Formerly known as Enterprise for Sensitive Data (ESD), offers even higher levels of data protection to support the needs of organizations with extremely sensitive data, particularly PHI data that must comply with HIPAA and HITRUST CSF regulations.
+●**关键业务—**提供企业版的所有功能和服务，此外还增强了安全性和数据保护。此外，数据库故障转移/故障恢复还增加了对业务连续性和灾难恢复的支持。以前称为企业敏感数据 (ESD)，提供更高级别的数据保护，以满足拥有极其敏感数据的组织的需求，特别是必须符合 HIPAA 和 HITRUST CSF 法规的 PHI 数据。
+
+● **Virtual Private Snowflake (VPS)** — Offers our highest level of security for organizations that have the strictest requirements, such as financial institutions and any other large enterprises that collect, analyze, and share highly sensitive data. Provides all the features and services of Business-Critical Edition, but in a separate Snowflake environment, isolated from all other Snowflake accounts (i.e., VPS accounts do not share any resources with accounts outside the VPS).
+● **Virtual Private Snowflake (VPS)** — 为具有最严格要求的组织提供最高级别的安全性，例如金融机构和任何其他收集、分析和共享高度敏感数据的大型企业。提供 Business-Critical Edition 的所有功能和服务，但在单独的 Snowflake 环境中，与所有其他 Snowflake 帐户隔离（即 VPS 帐户不与 VPS 外部的帐户共享任何资源）。
